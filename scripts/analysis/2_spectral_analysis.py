@@ -34,6 +34,12 @@ def main():
         np.save(f"{dir_output}/spectra_{kindom}.npy", spectra)
         np.save(f"{dir_output}/freqs_{kindom}.npy", freqs)
 
+    # repeat for control recordings
+    signals = np.load(f"data/epochs/fungi/control.npy")
+    freqs, spectra = compute_spectrum(signals, FS['fungi'], nperseg=NPERSEG)
+    np.save(f"{dir_output}/spectra_control.npy", spectra)
+    np.save(f"{dir_output}/freqs_control.npy", freqs)
+
     # display progress
     print(f"\n\nTotal analysis time:")
     print_time_elapsed(t_start)

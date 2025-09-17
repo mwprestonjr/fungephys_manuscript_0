@@ -48,14 +48,14 @@ def main():
                                    n_samples=N_SAMPLES,
                                    drift_window_size=DRIFT_WINDOW_SIZE)
         control_list.append(control_i)
-    controls = np.vstack(control_list)
+    control = np.vstack(control_list)
 
     # create time array
     time = np.arange(N_SAMPLES) / FS['fungi']
 
     # save data
     np.save(f"{dir_output}/signals.npy", signals)
-    np.save(f"{dir_output}/controls.npy", controls)
+    np.save(f"{dir_output}/control.npy", control)
     np.save(f"{dir_output}/time.npy", time)
 
     # display progress
