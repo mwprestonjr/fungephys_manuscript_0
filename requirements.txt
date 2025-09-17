@@ -5,3 +5,4 @@ pandas==2.2.3
 scipy==1.13.1
 seaborn==0.13.2
 specparam==2.0.0rc3
+mne==1.10.1
