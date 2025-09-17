@@ -30,11 +30,11 @@ def main():
     dir_output = f"data/epochs/animalia"
     os.makedirs(dir_output, exist_ok=True)
 
-    # load data
+    # load data (take one channel per region)
     signal_list = []
     fnames = [f for f in os.listdir(dir_input) if f.endswith('.edf')]
     for fname in fnames:
-        signal_list.append(read_raw_edf(f"{dir_input}/{fname}").get_data())
+        signal_list.append(read_raw_edf(f"{dir_input}/{fname}").get_data()[0])
     signals = np.vstack(signal_list)
 
     # create time array
