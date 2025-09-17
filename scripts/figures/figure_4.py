@@ -78,6 +78,12 @@ def main():
                         params.loc[params['kingdom']=='fungi', 'timescale'])
     print(f"\tTimescale ANOVA: F={ts_anova.statistic:.2f}, p={ts_anova.pvalue:.3e}")
 
+    # average parameters
+    print("\nParameter means:")
+    print(params.groupby('kingdom').mean()[['exponent', 'timescale']])
+
+    print("\nParameter stds:")
+    print(params.groupby('kingdom').std()[['exponent', 'timescale']])
 
     # PLOT #####################################################################
     print("\nPlotting...")
