@@ -3,26 +3,24 @@ Figure 1: Electrophysiological recording from fungal mycelial network.
 """
 
 # imports - standard
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
+import numpy as np
 import pandas as pd
-from neurodsp.spectral import compute_spectrum
-from matplotlib.gridspec import GridSpec
+import matplotlib.pyplot as plt
+from matplotlib import gridspec
+from statannotations.Annotator import Annotator
+from specparam import SpectralModel, SpectralGroupModel
 
 # imports - custom
 import sys
 sys.path.append("code")
+from time_utils import get_start_time, print_time_elapsed
 from info import FS
-from utils import get_start_time, print_time_elapsed, beautify_ax
+from utils import beautify_ax
 
 # settings
-SPECIES = 'herecium' # species to plot
-NPERSEG = 64 # samples per segment for fft
-N_SAMPLES = 3000 # number of samples to plot
-COLORS = [sns.color_palette('colorblind')[0], 'grey'] # [mycelium, control]
 plt.style.use('mplstyle/default.mplstyle')
-
+COLORS = ['#9467bd', '#8c564b']
 
 def main():
 
@@ -31,55 +29,180 @@ def main():
     t_start = get_start_time()
 
     # identify / create directories
-    dir_output = "figures"
-    if not os.path.exists(dir_output): 
-        os.makedirs(dir_output)
+    dir_output = "figures/main_figures"
+    os.makedirs(dir_output, exist_ok=True)
 
-    # load data
-    df = pd.read_csv('data/recordings.csv')
+    # load data: time-series
+    signals_f = np.load('data/epochs/fungi/signals.npy')
+    signals_c = np.load('data/epochs/fungi/control.npy')
+    time = np.load('data/epochs/fungi/time.npy')
 
-    # compute power spectrum
-    freqs, psd = compute_spectrum(df[SPECIES], FS, nperseg=NPERSEG)
-    _, psd_ctrl = compute_spectrum(df['control'], FS, nperseg=NPERSEG)
+    # z-score normalize time-series for plotting
+    signals_fn = _zscore(signals_f)
+    signals_cn = _zscore(signals_c)
 
-    # create figure
-    fig = plt.figure(figsize=(6.5, 2.34), constrained_layout=True)
-    gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 0.6], height_ratios=[1, 1])
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[1, 0])
-    ax3 = fig.add_subplot(gs[:, 1])
+    # load data: spectra
+    spectra_f = np.load('data/spectra/spectra_fungi.npy')
+    spectra_c = np.load('data/spectra/spectra_control.npy')
+    freqs = np.load('data/spectra/freqs_fungi.npy')
 
-    # A: plot time-series
-    titles = ('Mycelial network', 'Control')
-    for i, (column, title, ax) in enumerate(zip(df.columns[1:], titles, 
-                                                [ax1, ax2])):
-        ax.plot(df['time'][:N_SAMPLES], df[column][:N_SAMPLES], c=COLORS[i])
-        ax.set_ylabel("voltage (uV)")
-        ax.set_title(title)
-    ax2.set_xlabel('time (s)')
+    # apply specparam
+    sgm_fk = SpectralGroupModel(aperiodic_mode='knee', max_n_peaks=0)
+    sgm_fk.fit(freqs, spectra_f)
 
-    # B: plot power spectrum
-    ax3.loglog(freqs, psd, color=COLORS[0], lw=2, label='mycelium')
-    ax3.loglog(freqs, psd_ctrl, color=COLORS[1], lw=2, label='control')
-    ax3.set(xlabel= 'frequency (Hz)', ylabel='power (\u03BCV\u00b2/Hz)')
-    ax3.set_title('Power spectrum')
-    ax3.legend()
+    sgm_ff = SpectralGroupModel(aperiodic_mode='fixed', max_n_peaks=0)
+    sgm_ff.fit(freqs, spectra_f, freq_range=[.2, 5])
 
-    # add panel labels
-    fig.text(0.01, 0.95, 'a', fontsize=12, fontweight='bold')
-    fig.text(0.01, 0.50, 'b', fontsize=12, fontweight='bold')
-    fig.text(0.62, 0.95, 'c', fontsize=12, fontweight='bold')
+    sgm_cf = SpectralGroupModel(aperiodic_mode='fixed', max_n_peaks=0)
+    sgm_cf.fit(freqs, spectra_c, freq_range=[.2, 5])
 
-    # beautify axes
-    for ax in [ax1, ax2, ax3]:
-        beautify_ax(ax)
+    # parameterize grand average spectra (for plotting)
+    sgm_fk_ga = SpectralModel(aperiodic_mode='knee', max_n_peaks=0)
+    sgm_fk_ga.fit(freqs, np.mean(spectra_f, axis=0))
 
-    # save
-    fig.savefig('figures/figure_1.png')
+    sgm_ff_ga = SpectralModel(aperiodic_mode='fixed', max_n_peaks=0)
+    sgm_ff_ga.fit(freqs, np.mean(spectra_f, axis=0), freq_range=[.2, 5])
 
+    sgm_cf_ga = SpectralModel(aperiodic_mode='fixed', max_n_peaks=0)
+    sgm_cf_ga.fit(freqs, np.mean(spectra_c, axis=0), freq_range=[.2, 5])
+
+    # plot figure
+    plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
+                sgm_fk, sgm_ff, sgm_cf, sgm_fk_ga, sgm_ff_ga, sgm_cf_ga)
+    
     # display progress
     print(f"\n\nTotal analysis time:")
     print_time_elapsed(t_start)
+
+
+def _zscore(signals):
+    signal_mean = np.mean(signals, axis=1, keepdims=True)
+    signal_std = np.std(signals, axis=1, keepdims=True)
+
+    return (signals - signal_mean) / signal_std
+
+
+def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
+                sgm_fk, sgm_ff, sgm_cf, sgm_fk_ga, sgm_ff_ga, sgm_cf_ga):
+
+    # create figure and gridspec
+    fig = plt.figure(figsize=[6.5, 6], constrained_layout=True)
+    spec = gridspec.GridSpec(figure=fig, ncols=2, nrows=4, width_ratios=[2.25,1], 
+                             height_ratios=[1,1,1,2.5])
+    ax_a0 = fig.add_subplot(spec[1,0])
+    ax_a1 = fig.add_subplot(spec[2,0])
+    ax_b = fig.add_subplot(spec[1:3,1])
+    ax_c = fig.add_subplot(spec[0,:])
+
+    # panel a: time-series
+    start_idx = 0
+    n_samples =  FS['fungi'] * 60 * 60 * 1 # signals_f.shape[1] #
+    time_ = np.arange(n_samples) / FS['fungi']
+    for ii in range(signals_fn.shape[0]):
+        ax_a0.plot(time_, signals_fn[ii, start_idx:start_idx+n_samples]+(6*ii), 
+                linewidth=0.5, color=COLORS[0])
+
+    for ii in range(signals_cn.shape[0]):
+        ax_a1.plot(time_, signals_cn[ii, start_idx:start_idx+n_samples]+(6*ii), 
+                linewidth=0.5, color=COLORS[1])
+
+    for ax in (ax_a0, ax_a1):
+        ax.set_yticks([])
+    ax_a0.set_xticklabels([])
+    ax_a0.set(ylabel="fungi")
+    ax_a1.set(xlabel="time (s)\n", ylabel="control")
+    for ax in (ax_a0, ax_a1):
+        ax.set_xlim([time_[0], time_[-1]])
+
+    # panel b: spectra
+    plot_spectra(freqs[1:-1], spectra_f[:, 1:-1], ax_b, color=COLORS[0], label='fungi')
+    plot_spectra(freqs[1:-1], spectra_c[:, 1:-1], ax_b, color=COLORS[1], label='control')
+    ax_b.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
+    ax_b.legend()
+
+    # panel c: example signal
+    n_samples = 6000
+    ax_c.plot(time[:n_samples], signals_fn[4, :n_samples], color='k', linewidth=1)
+    ax_c.set(xlabel="time (s)\n", ylabel="voltage (\u03BCV)")
+
+    # create nested gridpec for bottom row (3 plots)
+    spec = gridspec.GridSpecFromSubplotSpec(nrows=1, ncols=3, subplot_spec=spec[3,:])
+    ax_d = fig.add_subplot(spec[0,0])
+    ax_e = fig.add_subplot(spec[0,1])
+    ax_f = fig.add_subplot(spec[0,2])
+
+    # panel d: spectra fit fungi - knee
+    ax_d.loglog(freqs, np.mean(spectra_f, axis=0), color=COLORS[0], label='fungi')
+    ax_d.plot(sgm_fk_ga.freqs, 10**sgm_fk_ga._ap_fit, color='k', linestyle='--', 
+              label='model fit')
+    ax_d.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
+    ax_d.legend()
+
+    # panel e: spectra fit - fixed
+    ax_e.loglog(freqs, np.mean(spectra_f, axis=0), color=COLORS[0], label='fungi')
+    ax_e.plot(sgm_ff_ga.freqs, 10**sgm_ff_ga._ap_fit, color='k', linestyle='--')
+    ax_e.loglog(freqs, np.mean(spectra_c, axis=0), color=COLORS[1], label='control')
+    ax_e.plot(sgm_cf_ga.freqs, 10**sgm_cf_ga._ap_fit, color='k', linestyle='--', 
+              label='model fits')
+    ax_e.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
+    ax_e.legend()
+
+    # panel f: exponent estimates
+    data = [sgm_fk.get_params('aperiodic', 'exponent'), 
+            sgm_ff.get_params('aperiodic', 'exponent'), 
+            sgm_cf.get_params('aperiodic', 'exponent')]
+    ax_f.boxplot(data, positions=[0,1,2], widths=0.6)
+    ax_f.set_xticks([0,1,2], labels=['fungi\n(Lorentzian)', 'fungi\n(linear)', 
+                                     'control\n(linear)'])
+    ax_f.set_ylabel("exponent")
+
+    # add statistical significance
+    df = pd.DataFrame({
+        'exponent': np.concatenate(data),
+        'group': (['fungi_knee'] * len(data[0])) + (['fungi_fixed'] * len(data[1])) + (['control_fixed'] * len(data[2]))
+    })
+    pairs = [("fungi_fixed", "control_fixed"), ("fungi_knee", "control_fixed")]
+    annot = Annotator(ax_f, pairs, data=df, x='group', y='exponent')
+    annot.configure(test='t-test_ind', text_format='star', loc='inside', verbose=0)
+    annot.apply_and_annotate()
+
+    # beautify axes
+    for ax in (ax_a0, ax_a1, ax_b, ax_c, ax_d, ax_e, ax_f):
+        beautify_ax(ax)
+    for ax in (ax_a0, ax_a1):
+        ax.spines['left'].set_visible(False)
+
+    # add panel titles
+    ax_c.set_title("Example recording")
+    ax_a0.set_title("Normalized voltage time-series")
+    ax_b.set_title("Power spectra")
+    ax_d.set_title("Lorentzian model fit")
+    ax_e.set_title("Linear model fit")
+    ax_f.set_title("Spectral exponent")
+
+    # add panel labels
+    fig.text(0.01, 0.97, 'a', fontsize=12, fontweight='bold')
+    fig.text(0.01, 0.74, 'b', fontsize=12, fontweight='bold')
+    fig.text(0.70, 0.74, 'c', fontsize=12, fontweight='bold')
+    fig.text(0.01, 0.32, 'd', fontsize=12, fontweight='bold')
+    fig.text(0.33, 0.32, 'e', fontsize=12, fontweight='bold')
+    fig.text(0.66, 0.32, 'f', fontsize=12, fontweight='bold')
+
+    # save
+    fig.savefig('figures/figure_2.png')
+
+
+def plot_spectra(freqs, spectra, ax, color=None, label=None):
+    if color is None:
+        color = 'k'
+    mean_spectra = np.mean(spectra, axis=0)
+    sem_spectra = np.std(spectra, axis=0) / np.sqrt(spectra.shape[0])
+    if label is None:
+        ax.loglog(freqs, mean_spectra, color=color)
+    else:
+        ax.loglog(freqs, mean_spectra, color=color, label=label)
+    ax.fill_between(freqs, mean_spectra - sem_spectra, 
+                    mean_spectra + sem_spectra, color=color, alpha=0.3)
 
 
 if __name__ == "__main__":
