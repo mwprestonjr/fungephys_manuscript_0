@@ -17,7 +17,7 @@ import sys
 sys.path.append("code")
 from time_utils import get_start_time, print_time_elapsed
 from info import FS
-from utils import beautify_ax
+from plots import beautify_ax
 
 # settings
 plt.style.use('mplstyle/default.mplstyle')
@@ -26,7 +26,7 @@ COLORS = ['#9467bd', '#8c564b']
 def main():
 
     # display progress
-    print("\n\nGenerating Figure 1...")
+    print("\n\nGenerating Figure 2...")
     t_start = get_start_time()
 
     # identify / create directories
@@ -146,8 +146,8 @@ def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
         ax.set_xlim([time_[0], time_[-1]])
 
     # panel b: spectra
-    plot_spectra(freqs[1:-1], spectra_f[:, 1:-1], ax_b, color=COLORS[0], label='fungi')
-    plot_spectra(freqs[1:-1], spectra_c[:, 1:-1], ax_b, color=COLORS[1], label='control')
+    _plot_spectra(freqs[1:-1], spectra_f[:, 1:-1], ax_b, color=COLORS[0], label='fungi')
+    _plot_spectra(freqs[1:-1], spectra_c[:, 1:-1], ax_b, color=COLORS[1], label='control')
     ax_b.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
     ax_b.legend()
 
@@ -220,10 +220,10 @@ def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
     fig.text(0.66, 0.32, 'f', fontsize=12, fontweight='bold')
 
     # save
-    fig.savefig('figures/figure_2.png')
+    fig.savefig('figures/main_figures/figure_2.png')
 
 
-def plot_spectra(freqs, spectra, ax, color=None, label=None):
+def _plot_spectra(freqs, spectra, ax, color=None, label=None):
     if color is None:
         color = 'k'
     mean_spectra = np.mean(spectra, axis=0)
