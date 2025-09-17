@@ -148,13 +148,13 @@ def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
     # panel b: spectra
     _plot_spectra(freqs[1:-1], spectra_f[:, 1:-1], ax_b, color=COLORS[0], label='fungi')
     _plot_spectra(freqs[1:-1], spectra_c[:, 1:-1], ax_b, color=COLORS[1], label='control')
-    ax_b.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
+    ax_b.set(xlabel="frequency (Hz)", ylabel="power ($mV^2/Hz$)")
     ax_b.legend()
 
     # panel c: example signal
     n_samples = 6000
     ax_c.plot(time[:n_samples], signals_fn[4, :n_samples], color='k', linewidth=1)
-    ax_c.set(xlabel="time (s)\n", ylabel="voltage (\u03BCV)")
+    ax_c.set(xlabel="time (s)\n", ylabel="voltage (mV)")
 
     # create nested gridpec for bottom row (3 plots)
     spec = gridspec.GridSpecFromSubplotSpec(nrows=1, ncols=3, subplot_spec=spec[3,:])
@@ -166,7 +166,7 @@ def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
     ax_d.loglog(freqs, np.mean(spectra_f, axis=0), color=COLORS[0], label='fungi')
     ax_d.plot(sgm_fk_ga.freqs, 10**sgm_fk_ga._ap_fit, color='k', linestyle='--', 
               label='model fit')
-    ax_d.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
+    ax_d.set(xlabel="frequency (Hz)", ylabel="power ($mV^2/Hz$)")
     ax_d.legend()
 
     # panel e: spectra fit - fixed
@@ -175,7 +175,7 @@ def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
     ax_e.loglog(freqs, np.mean(spectra_c, axis=0), color=COLORS[1], label='control')
     ax_e.plot(sgm_cf_ga.freqs, 10**sgm_cf_ga._ap_fit, color='k', linestyle='--', 
               label='model fits')
-    ax_e.set(xlabel="frequency (Hz)", ylabel="power (\u03BCV^2/Hz)")
+    ax_e.set(xlabel="frequency (Hz)", ylabel="power ($mV^2/Hz$)")
     ax_e.legend()
 
     # panel f: exponent estimates
