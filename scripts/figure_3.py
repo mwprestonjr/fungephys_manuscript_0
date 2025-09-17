@@ -101,7 +101,7 @@ def main():
     ax2 = fig.add_subplot(gs[1])
 
     # A: plot session spectra
-    ax1.loglog(freqs_s, spectra_s, color=COLORS[0], alpha=0.7, label='large')
+    ax1.loglog(freqs_s, spectra_s, color=COLORS[0], alpha=0.7, label='small')
     ax1.loglog(freqs_l, spectra_l, color=COLORS[1], alpha=0.7, label='large')
     ax1.set(xlabel='frequency (Hz)', ylabel='power (\u03BCV\u00b2/Hz)')
     ax1.legend()
