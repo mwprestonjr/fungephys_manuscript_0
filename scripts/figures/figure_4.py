@@ -84,21 +84,20 @@ def main():
     print("\nPlotting...")
     
     # create figure and nested gridspec
-    fig = plt.figure(figsize=[12, 8], constrained_layout=True)
-    spec = gridspec.GridSpec(figure=fig, ncols=4, nrows=3, 
-                             width_ratios=[1, 1, 1, 1], height_ratios=[1, 1, 1])
-    gs_a = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=spec[:, 0])
-    gs_de = gridspec.GridSpecFromSubplotSpec(4, 1, 
-                                             height_ratios=[0.3, 1, 1, 0.3],
-                                             subplot_spec=spec[:, 3])
+    fig = plt.figure(figsize=[6.5, 8], constrained_layout=True)
+    spec = gridspec.GridSpec(figure=fig, ncols=3, nrows=4, 
+                             width_ratios=[1, 1, 1], height_ratios=[1, 1, 1, 2])
+    gs_a = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=spec[:3, 0])
+    gs_de = gridspec.GridSpecFromSubplotSpec(1, 5, subplot_spec=spec[3, :],
+                                             width_ratios=[0.2, 1, 0.1, 1, 0.2])
 
     # plot subplot a
     ax_a = fig.add_subplot(gs_a[0])
     ax_a.imshow(plt.imread("data/images/kingdom_cartoon.png"))
     ax_a.axis('off')
-    fig.text(0.01, 0.85, 'Fungi', va='center', rotation='vertical', fontsize=12)
-    fig.text(0.01, 0.52, 'Plantae', va='center', rotation='vertical', fontsize=12)
-    fig.text(0.01, 0.20, 'Animalia', va='center', rotation='vertical', fontsize=12)
+    fig.text(0.01, 0.9, 'Fungi', va='center', rotation='vertical', fontsize=12)
+    fig.text(0.01, 0.69, 'Plantae', va='center', rotation='vertical', fontsize=12)
+    fig.text(0.01, 0.45, 'Animalia', va='center', rotation='vertical', fontsize=12)
 
     # loop through kingdoms 
     for ii, kingdom in enumerate(KINGDOMS):
@@ -107,14 +106,15 @@ def main():
         ax_b = fig.add_subplot(spec[ii, 1])
         signals_i = prep_signal_for_plotting(signals[kingdom], std=SHIFT[ii])
         ax_b.plot(time[kingdom], signals_i.T, color='k', linewidth=0.5)
-        ax_b.set(xlabel='time (s)', ylabel='voltage (z-score)')
+        ax_b.set(ylabel='voltage (z-score)')
         ax_b.set_yticks([])
         ax_b.spines['left'].set_visible(False)
         beautify_ax(ax_b)
 
         # plot subplot c
         ax_c = fig.add_subplot(spec[ii, 2])
-        plot_spectra(spectra[kingdom], freqs[kingdom], ax=ax_c, color='k')
+        plot_spectra(spectra[kingdom], freqs[kingdom], ax=ax_c, color='k', title='')
+        ax_c.set_xlabel('')
         beautify_ax(ax_c)
 
         # labels
@@ -123,17 +123,23 @@ def main():
             ax_c.set_title('Power spectra')
             ax_c.set_ylabel('power ($mV^2/Hz$)') # fungi data in mV 
 
+        if ii == 2:
+            ax_b.set_xlabel('time (s)')
+            ax_c.set_xlabel('frequency (Hz)')
+
     # plot subplot d
     ax_d = fig.add_subplot(gs_de[1])
     sns.boxplot(data=params, x='kingdom', y='exponent', ax=ax_d, color='gray')
-    ax_d.set_xticks(ax_d.get_xticks(), ax_d.get_xticklabels(), rotation=15)
+    labels =[label.get_text().capitalize() for label in ax_d.get_xticklabels()]
+    ax_d.set_xticks(ax_d.get_xticks(), labels)
     ax_d.set(xlabel="kingdom", ylabel="exponent")
     ax_d.set_title('Exponent')
 
     # plot subplot e
-    ax_e = fig.add_subplot(gs_de[2])
+    ax_e = fig.add_subplot(gs_de[3])
     sns.boxplot(data=params, x='kingdom', y='timescale', ax=ax_e, color='gray')
-    ax_e.set_xticks(ax_e.get_xticks(), ax_e.get_xticklabels(), rotation=15)
+    labels =[label.get_text().capitalize() for label in ax_e.get_xticklabels()]
+    ax_e.set_xticks(ax_e.get_xticks(), labels)
     ax_e.set(xlabel="kingdom", ylabel="timescale")
     ax_e.set_title('Timescale')
     ax_e.set_ylabel('timescale (s)')
@@ -142,6 +148,12 @@ def main():
     # beautify
     for ax in [ax_d, ax_e]:
         beautify_ax(ax)
+
+    # add panel labels
+    fig.text(0.28, 0.98, 'a', fontsize=12, fontweight='bold')
+    fig.text(0.68, 0.98, 'b', fontsize=12, fontweight='bold')
+    fig.text(0.11, 0.31, 'c', fontsize=12, fontweight='bold')
+    fig.text(0.57, 0.31, 'd', fontsize=12, fontweight='bold')
 
     # save figure
     fig.savefig(f"{dir_output}/figure_4.png")
