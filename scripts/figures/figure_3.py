@@ -33,7 +33,7 @@ def main():
     t_start = get_start_time()
 
     # identify / create directories
-    dir_output = "figures"
+    dir_output = "figures/main_figures"
     if not os.path.exists(dir_output): 
         os.makedirs(dir_output)
 
@@ -127,7 +127,7 @@ def main():
     fig.text(0.41, 0.95, 'b', fontsize=12, fontweight='bold')
 
     # save and show
-    fig.savefig('figures/main_figure/figure_3.png', dpi=600)
+    fig.savefig(f'{dir_output}/figure_3.png')
 
     # Print results ############################################################
 
