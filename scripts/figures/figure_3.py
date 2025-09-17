@@ -16,8 +16,9 @@ from matplotlib.gridspec import GridSpec
 # Imports - custom
 import sys
 sys.path.append("code")
-from info import FS, DATASET_PATH
-from utils import get_start_time, print_time_elapsed, beautify_ax
+from info import FS
+from time_utils import get_start_time, print_time_elapsed
+from plots import beautify_ax
 
 # settings
 NPERSEG = 2**12 # samples per segment for fft
@@ -38,17 +39,17 @@ def main():
 
     # load data
     try:
-        data_s = load_data(f"{DATASET_PATH}/Mycelium bioelectric native and light stimulated data and robot control/Long-term fungi recordings/Small plate_recording.txt")
-        data_l = load_data(f"{DATASET_PATH}/Mycelium bioelectric native and light stimulated data and robot control/Long-term fungi recordings/Large plate recording.txt")
+        data_s = load_data(f"data/raw/mishra_2024/Long-term fungi recordings/Small plate_recording.txt")
+        data_l = load_data(f"data/raw/mishra_2024/Long-term fungi recordings/Large plate recording.txt")
     except FileNotFoundError:
-        print("Data not found. Please download the dataset from https://zenodo.org/records/12812074 and update the DATASET_PATH variable in code/info.py.")
+        print("Data not found. Please download the dataset from https://zenodo.org/records/12812074 and place in data/raw/mishra_2024/")
         return
 
     # Analysis #################################################################
 
     # compute spectra for whole signals
-    freqs_s, spectra_s = compute_spectrum(data_s, FS, nperseg=NPERSEG)
-    freqs_l, spectra_l = compute_spectrum(data_l, FS, nperseg=NPERSEG)
+    freqs_s, spectra_s = compute_spectrum(data_s, FS['fungi'], nperseg=NPERSEG)
+    freqs_l, spectra_l = compute_spectrum(data_l, FS['fungi'], nperseg=NPERSEG)
     
     # match frequency range to other figures
     freq_mask = freqs_s > 0.078
@@ -67,13 +68,13 @@ def main():
     exponent_l = model_l.get_params('aperiodic', 'exponent')
 
     # epoch data into 1 hour blocks
-    duration = 60 * 60 * FS
+    duration = 60 * 60 * FS['fungi']
     n_blocks = data_s.shape[0] // duration
     data = data_s[:n_blocks*duration]
     data = data.reshape(n_blocks, duration)
 
     # compute spectra and exponent for each block
-    freqs, spectra = compute_spectrum(data, FS, nperseg=NPERSEG)
+    freqs, spectra = compute_spectrum(data, FS['fungi'], nperseg=NPERSEG)
     model = SpectralGroupModel()
     model.fit(freqs, spectra)
     exponent = model.get_params('aperiodic', 'exponent')
@@ -126,7 +127,7 @@ def main():
     fig.text(0.41, 0.95, 'b', fontsize=12, fontweight='bold')
 
     # save and show
-    fig.savefig('figures/figure_3.png', dpi=600)
+    fig.savefig('figures/main_figure/figure_3.png', dpi=600)
 
     # Print results ############################################################
 
@@ -158,7 +159,6 @@ def load_data(fname):
     data = pd.Series(data)
     data = data.interpolate()
     data = data.values
-    print(data.shape)
     
     return data
 
