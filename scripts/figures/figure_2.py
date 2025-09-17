@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from statannotations.Annotator import Annotator
 from specparam import SpectralModel, SpectralGroupModel
+from scipy.stats import ttest_ind
 
 # imports - custom
 import sys
@@ -66,10 +67,13 @@ def main():
     sgm_cf_ga = SpectralModel(aperiodic_mode='fixed', max_n_peaks=0)
     sgm_cf_ga.fit(freqs, np.mean(spectra_c, axis=0), freq_range=[.2, 5])
 
+    # print results
+    print_results(sgm_fk, sgm_ff, sgm_cf)
+
     # plot figure
     plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
                 sgm_fk, sgm_ff, sgm_cf, sgm_fk_ga, sgm_ff_ga, sgm_cf_ga)
-    
+
     # display progress
     print(f"\n\nTotal analysis time:")
     print_time_elapsed(t_start)
@@ -80,6 +84,33 @@ def _zscore(signals):
     signal_std = np.std(signals, axis=1, keepdims=True)
 
     return (signals - signal_mean) / signal_std
+
+
+def print_results(sgm_fk, sgm_ff, sgm_cf):
+    # print mean and std of exponent
+    print("Spectra exponent (mean ± std):")
+    print("\tFungi (knee):", np.mean(sgm_fk.get_params('aperiodic', 'exponent')), 
+          np.std(sgm_fk.get_params('aperiodic', 'exponent')))
+    print("\tFungi (fixed):", np.mean(sgm_ff.get_params('aperiodic', 'exponent')), 
+          np.std(sgm_ff.get_params('aperiodic', 'exponent')))
+    print("\tControl (fixed):", np.mean(sgm_cf.get_params('aperiodic', 'exponent')), 
+          np.std(sgm_cf.get_params('aperiodic', 'exponent')))
+
+    # print r-squared
+    print("R-squared:")
+    print("\tFungi (knee):", np.mean(sgm_fk.get_params('r_squared')))
+    print("\tFungi (fixed):", np.mean(sgm_ff.get_params('r_squared')))
+    print("\tControl (fixed):", np.mean(sgm_cf.get_params('r_squared')))
+
+    # print ttest results
+    ttest_ff = ttest_ind(sgm_ff.get_params('aperiodic', 'exponent'), 
+                         sgm_cf.get_params('aperiodic', 'exponent'))
+    ttest_fk = ttest_ind(sgm_fk.get_params('aperiodic', 'exponent'), 
+                         sgm_cf.get_params('aperiodic', 'exponent'))
+    print("T-test results, fungi (fixed) vs Control (fixed):")
+    print(f"\tp={ttest_ff.pvalue} \n\tt={ttest_ff.statistic}")
+    print("T-test results, fungi (knee) vs Control (fixed):")
+    print(f"\tp={ttest_fk.pvalue} \n\tt={ttest_fk.statistic}")
 
 
 def plot_figure(time, signals_fn, signals_cn, freqs, spectra_f, spectra_c,
