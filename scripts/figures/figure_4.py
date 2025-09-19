@@ -92,7 +92,8 @@ def main():
     # create figure and nested gridspec
     fig = plt.figure(figsize=[6.5, 8], constrained_layout=True)
     spec = gridspec.GridSpec(figure=fig, ncols=3, nrows=4, 
-                             width_ratios=[1, 1, 1], height_ratios=[1, 1, 1, 2])
+                             width_ratios=[1, 1, 1], 
+                             height_ratios=[0.6, 0.6, 0.6, 1])
     gs_a = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=spec[:3, 0])
     gs_de = gridspec.GridSpecFromSubplotSpec(1, 5, subplot_spec=spec[3, :],
                                              width_ratios=[0.2, 1, 0.1, 1, 0.2])
@@ -101,9 +102,9 @@ def main():
     ax_a = fig.add_subplot(gs_a[0])
     ax_a.imshow(plt.imread("data/images/kingdom_cartoon.png"))
     ax_a.axis('off')
-    fig.text(0.01, 0.9, 'Fungi', va='center', rotation='vertical', fontsize=12)
-    fig.text(0.01, 0.69, 'Plantae', va='center', rotation='vertical', fontsize=12)
-    fig.text(0.01, 0.45, 'Animalia', va='center', rotation='vertical', fontsize=12)
+    fig.text(0.01, 0.90, 'Fungi', va='center', rotation='vertical', fontsize=12)
+    fig.text(0.01, 0.67, 'Plantae', va='center', rotation='vertical', fontsize=12)
+    fig.text(0.01, 0.43, 'Animalia', va='center', rotation='vertical', fontsize=12)
 
     # loop through kingdoms 
     for ii, kingdom in enumerate(KINGDOMS):
