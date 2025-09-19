@@ -25,6 +25,7 @@ from utils import shift_signals, zscore
 from plots import plot_spectra, beautify_ax
 
 # settings
+plt.style.use('mplstyle/default.mplstyle')
 SHIFT = [8, 8, 5] # Shift signals for plotting (STDs)
 N_SIGNALS = 10 # Number of signals to plot per kingdom
 N_SAMPLES = {'fungi'   : 12000, 
