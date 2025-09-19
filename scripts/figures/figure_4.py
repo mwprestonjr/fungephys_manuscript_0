@@ -26,7 +26,7 @@ COLORS = sns.color_palette('colorblind')[:3]
 NPERSEG = 512 # samples per segment for fft
 SP_FIT_RANGE = [0, .5] # frequency range for spectral parameterization
 AP_MODE = 'knee' # aperiodic mode for spectral parameterization
-EPOCHS = {'low': (0, 1.5), 'high': (3.5, 5), 'control': (7, 8.5)}
+EPOCHS = {'control': (7, 8.5),'low': (0, 1.5), 'high': (3.5, 5)}
 fs = FS['fungi']
 
 
@@ -62,13 +62,16 @@ def main():
     freqs, spectra_2 = compute_spectrum(data_2, fs, nperseg=NPERSEG)
 
     # apply specparam
-    model_0 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE)
+    model_0 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE,
+                            verbose=False)
     model_0.fit(freqs, spectra_0, freq_range=SP_FIT_RANGE)
 
-    model_1 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE)
+    model_1 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE,
+                            verbose=False)
     model_1.fit(freqs, spectra_1, freq_range=SP_FIT_RANGE)
 
-    model_2 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE)
+    model_2 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE,
+                            verbose=False)
     model_2.fit(freqs, spectra_2, freq_range=SP_FIT_RANGE)
 
     # Plotting #################################################################
