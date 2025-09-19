@@ -92,11 +92,12 @@ def main():
     # create figure and nested gridspec
     fig = plt.figure(figsize=[6.5, 8], constrained_layout=True)
     spec = gridspec.GridSpec(figure=fig, ncols=3, nrows=4, 
-                             width_ratios=[1, 1, 1], 
-                             height_ratios=[0.6, 0.6, 0.6, 1])
+                             width_ratios=[1, 1, 1],
+                             height_ratios=[1, 1, 1, 1.25])
+                            #  height_ratios=[0.6, 0.6, 0.6, 1])
     gs_a = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=spec[:3, 0])
     gs_de = gridspec.GridSpecFromSubplotSpec(1, 5, subplot_spec=spec[3, :],
-                                             width_ratios=[0.2, 1, 0.1, 1, 0.2])
+                                             width_ratios=[0.4, 1, 0.2, 1, 0.4])
 
     # plot subplot a
     ax_a = fig.add_subplot(gs_a[0])
@@ -157,10 +158,10 @@ def main():
         beautify_ax(ax)
 
     # add panel labels
-    fig.text(0.28, 0.98, 'a', fontsize=12, fontweight='bold')
+    fig.text(0.29, 0.98, 'a', fontsize=12, fontweight='bold')
     fig.text(0.68, 0.98, 'b', fontsize=12, fontweight='bold')
-    fig.text(0.11, 0.31, 'c', fontsize=12, fontweight='bold')
-    fig.text(0.57, 0.31, 'd', fontsize=12, fontweight='bold')
+    fig.text(0.14, 0.24, 'c', fontsize=12, fontweight='bold')
+    fig.text(0.57, 0.24, 'd', fontsize=12, fontweight='bold')
 
     # save figure
     fig.savefig(f"{dir_output}/figure_3.png")
