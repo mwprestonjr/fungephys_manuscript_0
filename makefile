@@ -1,3 +1,5 @@
+.PHONY: figures
+
 analysis:
 	python scripts/analysis/1a_epoch_fungi_data.py
 	python scripts/analysis/1b_epoch_plantae_data.py
