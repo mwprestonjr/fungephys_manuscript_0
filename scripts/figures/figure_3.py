@@ -3,27 +3,31 @@ Figure 3. Reanalysis of electrophysiological recordings from Mishra et al., 2024
 """
 
 # Imports - standard
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
-import pandas as pd
-from neurodsp.spectral import compute_spectrum
-from specparam import SpectralModel, SpectralGroupModel
 import numpy as np
-from scipy.optimize import curve_fit
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from neurodsp.spectral import compute_spectrum
+from specparam import SpectralModel
 from matplotlib.gridspec import GridSpec
 
 # Imports - custom
 import sys
 sys.path.append("code")
-from info import FS
 from time_utils import get_start_time, print_time_elapsed
+from info import FS
+from settings import SPECPARAM_SETTINGS
 from plots import beautify_ax
 
 # settings
-NPERSEG = 2**12 # samples per segment for fft
-COLORS = sns.color_palette('colorblind')
 plt.style.use('mplstyle/default.mplstyle')
+COLORS = sns.color_palette('colorblind')[:3]
+NPERSEG = 512 # samples per segment for fft
+SP_FIT_RANGE = [0, .5] # frequency range for spectral parameterization
+AP_MODE = 'knee' # aperiodic mode for spectral parameterization
+EPOCHS = {'low': (0, 1.5), 'high': (3.5, 5), 'control': (7, 8.5)}
+fs = FS['fungi']
 
 
 def main():
@@ -39,110 +43,79 @@ def main():
 
     # load data
     try:
-        data_s = load_data(f"data/raw/mishra_2024/Long-term fungi recordings/Small plate_recording.txt")
-        data_l = load_data(f"data/raw/mishra_2024/Long-term fungi recordings/Large plate recording.txt")
+        fname = "data/raw/mishra_2024/Light stimulation test/Mycelium_light test_plate 1.txt"
+        data = load_data(fname)
     except FileNotFoundError:
         print("Data not found. Please download the dataset from https://zenodo.org/records/12812074 and place in data/raw/mishra_2024/")
         return
 
     # Analysis #################################################################
 
-    # compute spectra for whole signals
-    freqs_s, spectra_s = compute_spectrum(data_s, FS['fungi'], nperseg=NPERSEG)
-    freqs_l, spectra_l = compute_spectrum(data_l, FS['fungi'], nperseg=NPERSEG)
-    
-    # match frequency range to other figures
-    freq_mask = freqs_s > 0.078
-    freqs_s = freqs_s[freq_mask]
-    spectra_s = spectra_s[freq_mask]
-    freqs_l = freqs_l[freq_mask]
-    spectra_l = spectra_l[freq_mask]
+    # epoch data
+    data_0 = data[int(EPOCHS['control'][0]*3600*fs):int(EPOCHS['control'][1]*3600*fs)]
+    data_1 = data[int(EPOCHS['low'][0]*3600*fs):int(EPOCHS['low'][1]*3600*fs)]
+    data_2 = data[int(EPOCHS['high'][0]*3600*fs):int(EPOCHS['high'][1]*3600*fs)]
 
-    # parameterize spectra for whole recording
-    model_s = SpectralModel()
-    model_s.fit(freqs_s, spectra_s)
-    exponent_s = model_s.get_params('aperiodic', 'exponent')
+    # compute spectra
+    freqs, spectra_0 = compute_spectrum(data_0, fs, nperseg=NPERSEG)
+    freqs, spectra_1 = compute_spectrum(data_1, fs, nperseg=NPERSEG)
+    freqs, spectra_2 = compute_spectrum(data_2, fs, nperseg=NPERSEG)
 
-    model_l = SpectralModel()
-    model_l.fit(freqs_l, spectra_l)
-    exponent_l = model_l.get_params('aperiodic', 'exponent')
+    # apply specparam
+    model_0 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE)
+    model_0.fit(freqs, spectra_0, freq_range=SP_FIT_RANGE)
 
-    # epoch data into 1 hour blocks
-    duration = 60 * 60 * FS['fungi']
-    n_blocks = data_s.shape[0] // duration
-    data = data_s[:n_blocks*duration]
-    data = data.reshape(n_blocks, duration)
+    model_1 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE)
+    model_1.fit(freqs, spectra_1, freq_range=SP_FIT_RANGE)
 
-    # compute spectra and exponent for each block
-    freqs, spectra = compute_spectrum(data, FS['fungi'], nperseg=NPERSEG)
-    model = SpectralGroupModel()
-    model.fit(freqs, spectra)
-    exponent = model.get_params('aperiodic', 'exponent')
-
-    # compute rolling average of exponent (every day)
-    n_days = 30
-    exponent_mu = np.zeros(n_days)
-    exponent_std = np.zeros(n_days)
-    for ii in range(n_days):
-        exponent_mu[ii] = np.mean(exponent[ii*24:(ii+1)*24])
-        exponent_std[ii] = np.std(exponent[ii*24:(ii+1)*24])
-
-    # fit sigmoid
-    time_days = np.arange(n_days) + 1
-    p0 = [max(exponent_mu), np.median(time_days), 1, min(exponent_mu)]
-    popt, _ = curve_fit(sigmoid, time_days, exponent_mu, p0)
-    sigmoid_fit = sigmoid(time_days, *popt)
+    model_2 = SpectralModel(**SPECPARAM_SETTINGS, aperiodic_mode=AP_MODE)
+    model_2.fit(freqs, spectra_2, freq_range=SP_FIT_RANGE)
 
     # Plotting #################################################################
+    # init figure and gridspec
+    fig = plt.figure(figsize=(7.5, 2.5))
+    gs = GridSpec(1, 2, figure=fig, width_ratios=[1, 0.5])
+    ax_a = fig.add_subplot(gs[0, 0])
+    ax_b = fig.add_subplot(gs[0, 1])
 
-    # init figure
-    fig = plt.figure(figsize=(6.5, 2.34))
-    gs = GridSpec(1, 2, figure=fig, width_ratios=[0.6, 1])
-    ax1 = fig.add_subplot(gs[0])
-    ax2 = fig.add_subplot(gs[1])
+    # Panel a: Light stimulation, time series with time ranges annotated
+    ax_a.plot(np.arange(data.shape[0]) / fs / 3600, data, color='k', lw=0.5)
+    labels = ['control', 'UV (low)', 'UV (high)']
+    for ii, (key, (start, end)) in enumerate(EPOCHS.items()):
+        ax_a.axvspan(start, end, color=COLORS[ii], alpha=0.3, label=labels[ii])
+    ax_a.set(xlabel='time (hours)', ylabel='voltage (\u03BCV)')
+    ax_a.set_title('Light stimulation test')
+    ax_a.set_xlim(0, 10)
+    ax_a.legend()
 
-    # A: plot session spectra
-    ax1.loglog(freqs_s, spectra_s, color=COLORS[0], alpha=0.7, label='small')
-    ax1.loglog(freqs_l, spectra_l, color=COLORS[1], alpha=0.7, label='large')
-    ax1.set(xlabel='frequency (Hz)', ylabel='power (\u03BCV\u00b2/Hz)')
-    ax1.legend()
+    # Panel b: Light stimulation, spectra fits
+    plot_sp_results(model_0, label='control', color=COLORS[0], ax=ax_b)
+    plot_sp_results(model_1, label='UV (low)', color=COLORS[1], ax=ax_b)
+    # plot_sp_results(model_2, label='UV (high)', color=COLORS[2], ax=ax_b)
+    ax_b.loglog(model_2.freqs, 10**model_2.power_spectrum, color=COLORS[2], lw=2, alpha=1, label='UV (high)')
+    ax_b.loglog(model_2.freqs, 10**model_2._ap_fit, color='k', linestyle='--', lw=1, alpha=1, label='model fits')
+    ax_b.set_title('Power spectra')
+    ax_b.legend()
 
-    # B: plot exponent over time and sigmoid fit
-    ax2.errorbar(time_days, exponent_mu, yerr=exponent_std, fmt='o', color='k',
-                label='daily average') # data by day
-    ax2.plot(time_days, sigmoid_fit, color='grey', label='sigmoid fit')
-    ax2.set(xlabel='time (days)', ylabel='exponent')
-    ax2.legend()
 
     # beautify plot
-    for ax in [ax1, ax2]:
+    for ax in [ax_a, ax_b]:
         beautify_ax(ax)
 
-    # label plots
-    ax1.set_title('Power spectral density')
-    ax2.set_title('Spectral exponent')
-
     # add panel labels
-    fig.text(0.01, 0.95, 'a', fontsize=12, fontweight='bold')
-    fig.text(0.41, 0.95, 'b', fontsize=12, fontweight='bold')
+    fig.text(0.03, 0.95, 'a', fontsize=12, fontweight='bold')
+    fig.text(0.70, 0.95, 'b', fontsize=12, fontweight='bold')
 
     # save and show
     fig.savefig(f'{dir_output}/figure_3.png')
 
     # Print results ############################################################
 
-    # print exponent for each plate
-    print("\nExponent for whole recording:")
-    print(f"  Small: {exponent_s:0.2f}")
-    print(f"  Large: {exponent_l:0.2f}")
-
-    # print parameters of sigmoid
-    print("\nSigmoid fit parameters:")
-    print(f"  R-squared: {np.corrcoef(exponent_mu, sigmoid_fit)[0, 1]:0.2f}")
-    print(f"  L (maximum): {popt[0]} ({popt[3]+popt[0]:0.2f})")
-    print(f"  k (slope): {popt[2]:0.2f}")
-    print(f"  X_0 (inflection point): {popt[1]:0.2f}")
-    print(f"  b (offset): {popt[3]:0.2f}")
+    # print exponent
+    print("Exponents:")
+    print(f"  Control: {model_0.get_params('aperiodic', 'exponent'):0.2f}")
+    print(f"  Treatment (low): {model_1.get_params('aperiodic', 'exponent'):0.2f}")
+    print(f"  Treatment (high): {model_2.get_params('aperiodic', 'exponent'):0.2f}")
 
     # display progress
     print(f"\n\nTotal analysis time:")
@@ -151,21 +124,20 @@ def main():
 
 def load_data(fname):
     # import data
-    data = pd.read_csv(fname, sep='\s+', header=None, index_col=0,
+    data = pd.read_csv(fname, sep=r'\s+', header=None, index_col=0,
                        names=['voltage'])
     data = np.squeeze(data.values)
 
     # interpolate nan values 
     data = pd.Series(data)
     data = data.interpolate()
-    data = data.values
     
-    return data
+    return data.values
 
 
-def sigmoid(x, L ,x0, k, b):
-    y = L / (1 + np.exp(-k*(x-x0)))+b
-    return (y)
+def plot_sp_results(model, label, color, ax):
+    ax.loglog(model.freqs, 10**model.power_spectrum, c=color, lw=2, label=label)
+    ax.loglog(model.freqs, 10**model._ap_fit, c='k', linestyle='--', lw=1)
 
 
 if __name__ == "__main__":
