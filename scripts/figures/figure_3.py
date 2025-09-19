@@ -31,6 +31,7 @@ N_SIGNALS = 10 # Number of signals to plot per kingdom
 N_SAMPLES = {'fungi'   : 12000, 
              'plantae' : 36000, 
              'animalia': 1000} # Number of samples to plot
+COLORS = sns.color_palette("colorblind") # colors for plotting
 
 
 def main():
@@ -113,7 +114,7 @@ def main():
         # plot subplot b
         ax_b = fig.add_subplot(spec[ii, 1])
         signals_i = prep_signal_for_plotting(signals[kingdom], std=SHIFT[ii])
-        ax_b.plot(time[kingdom], signals_i.T, color='k', linewidth=0.5)
+        ax_b.plot(time[kingdom], signals_i.T, linewidth=0.5, color=COLORS[ii])
         ax_b.set(ylabel='voltage (z-score)')
         ax_b.set_yticks([])
         ax_b.spines['left'].set_visible(False)
@@ -121,7 +122,8 @@ def main():
 
         # plot subplot c
         ax_c = fig.add_subplot(spec[ii, 2])
-        plot_spectra(spectra[kingdom], freqs[kingdom], ax=ax_c, color='k', title='')
+        plot_spectra(spectra[kingdom], freqs[kingdom], ax=ax_c, 
+                     color=COLORS[ii], title='')
         ax_c.set_xlabel('')
         beautify_ax(ax_c)
 
@@ -137,7 +139,7 @@ def main():
 
     # plot subplot d
     ax_d = fig.add_subplot(gs_de[1])
-    sns.boxplot(data=params, x='kingdom', y='exponent', ax=ax_d, color='gray')
+    sns.boxplot(data=params, x='kingdom', y='exponent', ax=ax_d, palette=COLORS)
     labels =[label.get_text().capitalize() for label in ax_d.get_xticklabels()]
     ax_d.set_xticks(ax_d.get_xticks(), labels)
     ax_d.set(xlabel="kingdom", ylabel="exponent")
@@ -145,7 +147,7 @@ def main():
 
     # plot subplot e
     ax_e = fig.add_subplot(gs_de[3])
-    sns.boxplot(data=params, x='kingdom', y='timescale', ax=ax_e, color='gray')
+    sns.boxplot(data=params, x='kingdom', y='timescale', ax=ax_e, palette=COLORS)
     labels =[label.get_text().capitalize() for label in ax_e.get_xticklabels()]
     ax_e.set_xticks(ax_e.get_xticks(), labels)
     ax_e.set(xlabel="kingdom", ylabel="timescale")
